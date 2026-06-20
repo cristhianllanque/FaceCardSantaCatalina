@@ -1,4 +1,4 @@
-import sqlite3
+import pymysql
 import numpy as np
 import json
 import os
@@ -6,12 +6,20 @@ from pathlib import Path
 from datetime import datetime
 
 # Rutas
-SQLITE_DB = "d:/faceCardV2/Laravel/database/database.sqlite"
 NPZ_FILE = "d:/faceCardV2/dataset/embeddings_db.npz"
 DATASET_DIR = "d:/faceCardV2/dataset"
 
+# Configuración MySQL
+DB_CONFIG = {
+    'host': '127.0.0.1',
+    'user': 'root',
+    'password': '',
+    'database': 'facecardv2',
+    'port': 3306
+}
+
 def sync_db():
-    conn = sqlite3.connect(SQLITE_DB)
+    conn = pymysql.connect(**DB_CONFIG)
     cursor = conn.cursor()
     
     print("Sincronizando estudiantes desde embeddings_db.npz y dataset local a Laravel SQLite...")
@@ -42,13 +50,13 @@ def sync_db():
                     if not codigo: continue
                     if not nombre: nombre = codigo
                     
-                    # Insertar en SQLite
-                    cursor.execute("SELECT id FROM personas WHERE codigo = ?", (codigo,))
+                    # Insertar en MySQL
+                    cursor.execute("SELECT id FROM personas WHERE codigo = %s", (codigo,))
                     if not cursor.fetchone():
                         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         cursor.execute("""
                             INSERT INTO personas (codigo, nombre, cargo, tiene_embedding, created_at, updated_at)
-                            VALUES (?, ?, 'estudiante', 1, ?, ?)
+                            VALUES (%s, %s, 'estudiante', 1, %s, %s)
                         """, (codigo, nombre, now, now))
                         print(f"Insertado NPZ: {codigo} - {nombre}")
                         
@@ -68,12 +76,12 @@ def sync_db():
                                     if isinstance(v, dict):
                                         nombre = str(v.get("nombre", v.get("name", codigo))).strip()
                                         
-                                    cursor.execute("SELECT id FROM personas WHERE codigo = ?", (codigo,))
+                                    cursor.execute("SELECT id FROM personas WHERE codigo = %s", (codigo,))
                                     if not cursor.fetchone():
                                         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                                         cursor.execute("""
                                             INSERT INTO personas (codigo, nombre, cargo, tiene_embedding, created_at, updated_at)
-                                            VALUES (?, ?, 'estudiante', 1, ?, ?)
+                                            VALUES (%s, %s, 'estudiante', 1, %s, %s)
                                         """, (codigo, nombre, now, now))
                                         print(f"Insertado NPZ (Dict): {codigo} - {nombre}")
                         except:
@@ -94,12 +102,12 @@ def sync_db():
                     codigo = meta.get("codigo", student_dir.name)
                     nombre = meta.get("nombre", codigo)
                     
-                    cursor.execute("SELECT id FROM personas WHERE codigo = ?", (codigo,))
+                    cursor.execute("SELECT id FROM personas WHERE codigo = %s", (codigo,))
                     if not cursor.fetchone():
                         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         cursor.execute("""
                             INSERT INTO personas (codigo, nombre, cargo, tiene_embedding, created_at, updated_at)
-                            VALUES (?, ?, 'estudiante', 1, ?, ?)
+                            VALUES (%s, %s, 'estudiante', 1, %s, %s)
                         """, (codigo, nombre, now, now))
                         print(f"Insertado Local: {codigo} - {nombre}")
 

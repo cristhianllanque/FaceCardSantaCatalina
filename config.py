@@ -82,9 +82,9 @@ BRIGHTNESS_MAX = 220            # Brillo medio máximo aceptable
 # ============================================================
 # Enrollment
 # ============================================================
-MIN_SAMPLES_PER_STUDENT = 5     # Mínimo de rostros para considerar enrollment completo
-MAX_SAMPLES_PER_STUDENT = 20    # Máximo de capturas por estudiante
-WEBCAM_CAPTURE_DELAY_MS = 500   # Delay entre capturas automáticas (ms)
+MIN_SAMPLES_PER_STUDENT = 4     # Mínimo de rostros (1 frente, 1 izq, 1 der, 1 arriba/abajo)
+MAX_SAMPLES_PER_STUDENT = 10    # Máximo de capturas por estudiante
+WEBCAM_CAPTURE_DELAY_MS = 2500  # Delay entre capturas automáticas (ms) para dar tiempo a moverse
 
 # ============================================================
 # Data Augmentation

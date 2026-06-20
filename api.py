@@ -80,6 +80,9 @@ async def enroll(req: EnrollRequest):
     # Reload recognizer database to include the new person
     recognizer.build_database()
     
+    if results["processed"] == 0:
+        raise HTTPException(status_code=400, detail="No se detectó ningún rostro válido en las fotos capturadas. Intente acercarse a la cámara o mejorar la iluminación.")
+        
     return results
 
 @app.post("/api/recognize")
@@ -97,11 +100,22 @@ async def recognize(req: RecognizeRequest):
                     det = item.get("detection")
                     if det:
                         x1, y1, x2, y2 = det.bbox
+                        x1, y1 = max(0, int(x1)), max(0, int(y1))
+                        x2, y2 = min(image.shape[1], int(x2)), min(image.shape[0], int(y2))
+                        
+                        face_crop = image[y1:y2, x1:x2]
+                        if face_crop.size > 0:
+                            _, buffer = cv2.imencode('.jpg', face_crop)
+                            face_b64 = base64.b64encode(buffer).decode('utf-8')
+                        else:
+                            face_b64 = ""
+
                         matches.append({
                             "codigo": str(best_student.get("codigo", "")),
                             "nombre": str(best_student.get("nombre", "")),
                             "confianza": float(score),
-                            "bbox": [int(x1), int(y1), int(x2), int(y2)]
+                            "bbox": [int(x1), int(y1), int(x2), int(y2)],
+                            "foto_crop": face_b64
                         })
         return {"found": len(matches) > 0, "matches": matches}
     except Exception as e:

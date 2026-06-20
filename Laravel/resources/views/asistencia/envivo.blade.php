@@ -9,7 +9,8 @@
         <div class="card" style="padding:16px;">
             <div class="flex items-center justify-between mb-1">
                 <h3 class="card-title" style="margin:0;"><i class="fas fa-video"></i> Cámara de Reconocimiento</h3>
-                <div class="flex gap-1">
+                <div class="flex gap-1" style="align-items:center;">
+                    <select id="liveCameraSelect" class="form-control" style="background:#2b2b40; color:white; border:none; padding:4px 8px; border-radius:4px; max-width:200px; display:none; margin-right:8px;"></select>
                     <button class="btn btn-success" id="btnStart" onclick="startAttendance()">
                         <i class="fas fa-play"></i> Comenzar Asistencia
                     </button>
@@ -92,14 +93,21 @@
     {{-- Lista de asistencia --}}
     <div class="live-sidebar">
         <div class="card" style="padding:16px;display:flex;flex-direction:column;height:100%;overflow:hidden;">
-            <div class="flex items-center justify-between mb-1">
+            <div class="flex items-center justify-between mb-1" style="flex-wrap:wrap; gap:8px;">
                 <h3 class="card-title" style="margin:0;"><i class="fas fa-list-check"></i> Registrados Hoy</h3>
-                <span class="badge badge-accent" id="attendanceCount">{{ $asistenciasHoy->count() }}</span>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <select id="filterList" class="form-control" style="background:#2b2b40; color:white; border:none; padding:2px 6px; border-radius:4px; font-size:0.8rem;" onchange="filterAttendance()">
+                        <option value="todos">Todos</option>
+                        <option value="estudiante">Estudiantes</option>
+                        <option value="docente">Docentes</option>
+                    </select>
+                    <span class="badge badge-accent" id="attendanceCount">{{ $asistenciasHoy->count() }}</span>
+                </div>
             </div>
 
             <div class="attendance-list" id="attendanceList">
                 @foreach($asistenciasHoy as $a)
-                <div class="attendance-item" data-id="{{ $a->id }}">
+                <div class="attendance-item" data-id="{{ $a->id }}" data-cargo="{{ strtolower($a->persona->cargo) }}">
                     <img src="{{ $a->persona->foto_url }}" alt="" onerror="this.src='/images/default-avatar.svg'" style="width:44px;height:44px;border-radius:8px;object-fit:cover;">
                     <div class="attendance-item-info">
                         <div class="attendance-item-name">{{ $a->persona->nombre }}</div>
@@ -141,12 +149,48 @@ let recognitionInterval = null;
 registeredCodes.add('{{ $a->persona->codigo }}');
 @endforeach
 
+// Cargar cámaras
+async function loadLiveCameras() {
+    try {
+        await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(d => d.kind === 'videoinput');
+        const select = document.getElementById('liveCameraSelect');
+        
+        select.innerHTML = '';
+        if (videoDevices.length > 0) {
+            select.style.display = 'block';
+            videoDevices.forEach((device, index) => {
+                const option = document.createElement('option');
+                option.value = device.deviceId;
+                option.text = device.label || `Cámara ${index + 1}`;
+                select.appendChild(option);
+            });
+            select.addEventListener('change', () => {
+                if (isRunning) {
+                    stopAttendance();
+                    setTimeout(startAttendance, 500);
+                }
+            });
+        }
+    } catch (e) {
+        console.log("No se pudieron cargar las cámaras: ", e);
+    }
+}
+loadLiveCameras();
+
 async function startAttendance() {
     const video = document.getElementById('liveVideo');
+    const select = document.getElementById('liveCameraSelect');
     try {
-        liveStream = await navigator.mediaDevices.getUserMedia({
-            video: { width: 1280, height: 720, facingMode: 'user' }
-        });
+        const constraints = { video: { width: 1280, height: 720 } };
+        if (select && select.value) {
+            constraints.video.deviceId = { exact: select.value };
+        } else {
+            constraints.video.facingMode = 'user';
+        }
+
+        liveStream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = liveStream;
         video.style.display = 'block';
         document.getElementById('overlayCanvas').style.display = 'block';
@@ -254,7 +298,8 @@ function startRecognitionLoop() {
 
                     // Solo registrar si supera umbral (0.45) y no fue registrado hoy
                     if (isRecognized && !registeredCodes.has(match.codigo)) {
-                        await registerAttendance(match.codigo, match.confianza, base64Image);
+                        let evidenciaCrop = match.foto_crop ? 'data:image/jpeg;base64,' + match.foto_crop : null;
+                        await registerAttendance(match.codigo, match.confianza, evidenciaCrop, base64Image);
                     }
                 }
             }
@@ -264,7 +309,7 @@ function startRecognitionLoop() {
     }, 600);
 }
 
-async function registerAttendance(codigo, confianza, frameBase64) {
+async function registerAttendance(codigo, confianza, cropBase64, fullBase64) {
     if (registeredCodes.has(codigo)) return;
     
     // Primero, buscar la persona en la DB de Laravel para obtener su ID
@@ -284,7 +329,8 @@ async function registerAttendance(codigo, confianza, frameBase64) {
         body: JSON.stringify({
             persona_id: searchData.persona.id,
             confianza: confianza,
-            foto_captura: frameBase64,
+            foto_captura: cropBase64 || fullBase64,
+            foto_completa: fullBase64,
             sesion_id: sesionId
         })
     });
@@ -361,7 +407,7 @@ function addAttendanceItem(a) {
     const badgeClass = a.estado === 'puntual' ? 'success' : a.estado === 'tardanza' ? 'warning' : 'danger';
 
     const html = `
-        <div class="attendance-item" style="animation:slideIn 0.3s ease;">
+        <div class="attendance-item" data-cargo="${a.persona_cargo ? a.persona_cargo.toLowerCase() : ''}" style="animation:slideIn 0.3s ease;">
             <img src="${a.persona_foto || '/images/default-avatar.svg'}" alt="" onerror="this.src='/images/default-avatar.svg'" style="width:44px;height:44px;border-radius:8px;object-fit:cover;">
             <div class="attendance-item-info">
                 <div class="attendance-item-name">${a.persona_nombre}</div>
@@ -375,6 +421,25 @@ function addAttendanceItem(a) {
 
     const count = document.getElementById('attendanceCount');
     count.textContent = parseInt(count.textContent) + 1;
+    filterAttendance(); // Re-aplicar filtro
+}
+
+function filterAttendance() {
+    const filter = document.getElementById('filterList').value;
+    const items = document.querySelectorAll('.attendance-item');
+    let visibleCount = 0;
+    
+    items.forEach(item => {
+        const cargo = item.getAttribute('data-cargo');
+        if (filter === 'todos' || cargo === filter) {
+            item.style.display = 'flex';
+            visibleCount++;
+        } else {
+            item.style.display = 'none';
+        }
+    });
+    
+    document.getElementById('attendanceCount').textContent = visibleCount;
 }
 
 function showLastRecognition(name, info) {

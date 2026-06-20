@@ -13,6 +13,7 @@ return new class extends Migration
             $table->foreignId('persona_id')->constrained('personas')->cascadeOnDelete();
             $table->date('fecha');
             $table->string('hora_ingreso');
+            $table->enum('turno', ['mañana', 'tarde'])->nullable();
             $table->enum('estado', ['puntual', 'tardanza', 'falta'])->default('puntual');
             $table->float('confianza')->default(0);
             $table->string('foto_captura')->nullable();

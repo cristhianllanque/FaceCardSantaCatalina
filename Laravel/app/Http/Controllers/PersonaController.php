@@ -10,34 +10,38 @@ class PersonaController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Persona::query();
-
-        if ($request->filled('buscar')) {
-            $buscar = $request->buscar;
-            $query->where(function ($q) use ($buscar) {
-                $q->where('nombre', 'like', "%{$buscar}%")
-                  ->orWhere('codigo', 'like', "%{$buscar}%");
+        // Query base para Estudiantes
+        $queryEst = Persona::where('cargo', 'estudiante');
+        if ($request->filled('buscar_est')) {
+            $search = $request->buscar_est;
+            $queryEst->where(function ($q) use ($search) {
+                $q->where('nombre', 'like', "%{$search}%")
+                  ->orWhere('codigo', 'like', "%{$search}%");
             });
         }
+        if ($request->filled('grado')) { $queryEst->where('grado', $request->grado); }
+        if ($request->filled('seccion')) { $queryEst->where('seccion', $request->seccion); }
+        if ($request->filled('turno_est')) { $queryEst->where('turno', $request->turno_est); }
 
-        if ($request->filled('cargo')) {
-            $query->where('cargo', $request->cargo);
+        $estudiantes = $queryEst->latest()->paginate(10, ['*'], 'page_est');
+
+        // Query base para Docentes
+        $queryDoc = Persona::where('cargo', 'docente');
+        if ($request->filled('buscar_doc')) {
+            $search = $request->buscar_doc;
+            $queryDoc->where(function ($q) use ($search) {
+                $q->where('nombre', 'like', "%{$search}%")
+                  ->orWhere('codigo', 'like', "%{$search}%");
+            });
         }
+        if ($request->filled('area')) { $queryDoc->where('area', $request->area); }
+        if ($request->filled('turno_doc')) { $queryDoc->where('turno', $request->turno_doc); }
 
-        if ($request->filled('area')) {
-            $query->where('area', $request->area);
-        }
+        $docentes = $queryDoc->latest()->paginate(10, ['*'], 'page_doc');
 
-        // Si docente, filtrar solo su área
-        $user = auth()->user();
-        if ($user->role === 'docente') {
-            $query->where('area', $user->area);
-        }
+        $areas = Persona::where('cargo', 'docente')->whereNotNull('area')->distinct()->pluck('area');
 
-        $personas = $query->orderByDesc('created_at')->paginate(12);
-        $areas = Persona::distinct()->pluck('area')->filter()->values();
-
-        return view('personas.index', compact('personas', 'areas'));
+        return view('personas.index', compact('estudiantes', 'docentes', 'areas'));
     }
 
     public function create()
@@ -55,6 +59,7 @@ class PersonaController extends Controller
             'area' => 'nullable|string|max:255',
             'grado' => 'nullable|string|max:20',
             'seccion' => 'nullable|string|max:10',
+            'turno' => 'nullable|in:mañana,tarde',
             'foto' => 'nullable|image|max:5120',
         ];
 
@@ -68,11 +73,16 @@ class PersonaController extends Controller
         $persona->area = $validated['area'] ?? null;
         $persona->grado = $validated['grado'] ?? null;
         $persona->seccion = $validated['seccion'] ?? null;
+        $persona->turno = $validated['turno'] ?? null;
 
+        // Si sube foto de perfil (archivo opcional)
         if ($request->hasFile('foto')) {
             $path = $request->file('foto')->store('personas/fotos', 'public');
             $persona->foto_path = $path;
-        } elseif ($request->filled('foto_base64')) {
+        }
+        
+        // Si hay foto base64 del escaneo (obligatorio para la IA)
+        if ($request->filled('foto_base64')) {
             $imageData = $request->foto_base64;
             if (preg_match('/^data:image\/(\w+);base64,/', $imageData, $type)) {
                 $imageData = substr($imageData, strpos($imageData, ',') + 1);
@@ -80,7 +90,14 @@ class PersonaController extends Controller
                 $imageData = base64_decode($imageData);
                 $filename = "personas/fotos/{$persona->codigo}_" . time() . ".{$type}";
                 Storage::disk('public')->put($filename, $imageData);
-                $persona->foto_path = $filename;
+                
+                // Si NO había subido foto de archivo, usamos esta como foto de perfil
+                if (!$request->hasFile('foto')) {
+                    $persona->foto_path = $filename;
+                }
+                
+                // Siempre marcamos que tiene embedding porque se completó el escaneo
+                $persona->tiene_embedding = true;
             }
         }
 
@@ -111,6 +128,7 @@ class PersonaController extends Controller
             'area' => 'nullable|string|max:255',
             'grado' => 'nullable|string|max:20',
             'seccion' => 'nullable|string|max:10',
+            'turno' => 'nullable|in:mañana,tarde',
             'foto' => 'nullable|image|max:5120',
         ];
 
@@ -123,6 +141,7 @@ class PersonaController extends Controller
         $persona->area = $validated['area'] ?? null;
         $persona->grado = $validated['grado'] ?? null;
         $persona->seccion = $validated['seccion'] ?? null;
+        $persona->turno = $validated['turno'] ?? null;
 
         if ($request->hasFile('foto')) {
             // Eliminar foto anterior
@@ -144,12 +163,52 @@ class PersonaController extends Controller
         if ($persona->foto_path) {
             Storage::disk('public')->delete($persona->foto_path);
         }
-
-        $nombre = $persona->nombre;
         $persona->delete();
 
-        return redirect()->route('personas.index')
-            ->with('success', "Persona {$nombre} eliminada correctamente.");
+        return redirect()->route('personas.index')->with('success', 'Persona eliminada correctamente.');
+    }
+
+    /**
+     * Obtiene las URLs de los 10 rostros IA de una persona.
+     */
+    public function getFaces(Persona $persona)
+    {
+        $codigo = $persona->codigo;
+        $datasetPath = base_path('../dataset/' . $codigo . '/faces');
+        
+        if (!file_exists($datasetPath)) {
+            return response()->json(['success' => false, 'message' => 'No se encontró la carpeta del dataset.']);
+        }
+
+        $files = array_diff(scandir($datasetPath), array('.', '..'));
+        $faces = [];
+
+        foreach ($files as $file) {
+            if (pathinfo($file, PATHINFO_EXTENSION) === 'jpg' || pathinfo($file, PATHINFO_EXTENSION) === 'png') {
+                $faces[] = url('/dataset/' . $codigo . '/' . $file);
+            }
+        }
+
+        sort($faces);
+
+        return response()->json([
+            'success' => true,
+            'faces' => array_values($faces)
+        ]);
+    }
+
+    /**
+     * Sirve físicamente la imagen desde la carpeta dataset de Python.
+     */
+    public function serveFaceImage($codigo, $filename)
+    {
+        $path = base_path('../dataset/' . $codigo . '/faces/' . $filename);
+
+        if (!file_exists($path)) {
+            abort(404);
+        }
+
+        return response()->file($path);
     }
 
     /**

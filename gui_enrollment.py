@@ -593,6 +593,24 @@ class EnrollmentGUI:
                            0, 0, 360, Colors.GRAY, 1, cv2.LINE_AA)
                 cv2.putText(canvas, "Coloque el rostro aqui", (cx - 110, cy + guide_size + 30),
                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, Colors.GRAY, 1, cv2.LINE_AA)
+            else:
+                has_data_temp = bool(self.txt_codigo.value.strip() and self.txt_nombre.value.strip())
+                if has_data_temp and self.captured < config.MAX_SAMPLES_PER_STUDENT:
+                    if self.captured == 0:
+                        instruccion = "PASO 1: Mire directamente a la camara"
+                    elif self.captured == 1:
+                        instruccion = "PASO 2: Gire levemente a la IZQUIERDA"
+                    elif self.captured == 2:
+                        instruccion = "PASO 3: Gire levemente a la DERECHA"
+                    elif self.captured == 3:
+                        instruccion = "PASO 4: Mire levemente hacia ARRIBA o ABAJO"
+                    else:
+                        instruccion = f"Extra ({self.captured}/{config.MAX_SAMPLES_PER_STUDENT}): Cambie de expresion o angulo"
+                    
+                    text_size = cv2.getTextSize(instruccion, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)[0]
+                    tx = (self.CAM_W - text_size[0]) // 2
+                    cv2.rectangle(canvas, (tx - 10, 20), (tx + text_size[0] + 10, 50), Colors.BG_DARK, -1)
+                    cv2.putText(canvas, instruccion, (tx, 42), cv2.FONT_HERSHEY_SIMPLEX, 0.6, Colors.YELLOW, 2, cv2.LINE_AA)
 
             # Actualizar estado
             if detections:

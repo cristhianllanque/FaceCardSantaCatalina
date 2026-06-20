@@ -38,13 +38,18 @@
                 <option value="docente" {{ old('cargo', $persona->cargo) === 'docente' ? 'selected' : '' }}>Docente</option>
             </select>
         </div>
-        <div class="form-group">
+        <div class="form-group {{ old('cargo', $persona->cargo) !== 'docente' ? 'hidden' : '' }}" id="areaGroup">
             <label class="form-label">Área</label>
             <select name="area" class="form-control">
-                <option value="">Sin área</option>
-                @foreach(['Ingeniería de Sistemas','Ingeniería Civil','Administración','Contabilidad','Educación','Derecho','Medicina'] as $a)
-                <option value="{{ $a }}" {{ old('area', $persona->area) === $a ? 'selected' : '' }}>{{ $a }}</option>
-                @endforeach
+                <option value="">Seleccionar área/curso...</option>
+                <option value="Matemática" {{ old('area', $persona->area) === 'Matemática' ? 'selected' : '' }}>Matemática</option>
+                <option value="Comunicación" {{ old('area', $persona->area) === 'Comunicación' ? 'selected' : '' }}>Comunicación</option>
+                <option value="Ciencias Sociales" {{ old('area', $persona->area) === 'Ciencias Sociales' ? 'selected' : '' }}>Ciencias Sociales</option>
+                <option value="Ciencia y Tecnología" {{ old('area', $persona->area) === 'Ciencia y Tecnología' ? 'selected' : '' }}>Ciencia y Tecnología</option>
+                <option value="Inglés" {{ old('area', $persona->area) === 'Inglés' ? 'selected' : '' }}>Inglés</option>
+                <option value="Educación Física" {{ old('area', $persona->area) === 'Educación Física' ? 'selected' : '' }}>Educación Física</option>
+                <option value="Arte y Cultura" {{ old('area', $persona->area) === 'Arte y Cultura' ? 'selected' : '' }}>Arte y Cultura</option>
+                <option value="EPT" {{ old('area', $persona->area) === 'EPT' ? 'selected' : '' }}>EPT (Educación para el Trabajo)</option>
             </select>
         </div>
         <div id="estudianteFields" class="{{ old('cargo', $persona->cargo) !== 'estudiante' ? 'hidden' : '' }}">
@@ -82,9 +87,22 @@
 
 @push('scripts')
 <script>
-document.getElementById('cargoSelect').addEventListener('change', function() {
-    document.getElementById('estudianteFields').classList.toggle('hidden', this.value !== 'estudiante');
-});
+    const cargoSelect = document.querySelector('select[name="cargo"]');
+    const estudianteFields = document.getElementById('estudianteFields');
+    const areaGroup = document.getElementById('areaGroup');
+
+    function toggleFields() {
+        if (estudianteFields) {
+            estudianteFields.classList.toggle('hidden', cargoSelect.value !== 'estudiante');
+        }
+        if (areaGroup) {
+            areaGroup.classList.toggle('hidden', cargoSelect.value !== 'docente');
+        }
+    }
+
+    if (cargoSelect) {
+        cargoSelect.addEventListener('change', toggleFields);
+    }
 </script>
 @endpush
 @endsection
