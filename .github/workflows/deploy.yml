@@ -1,0 +1,45 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || '22' }}
+          script: |
+            # Entramos al directorio del proyecto (Debes configurar esta variable en GitHub)
+            cd ${{ secrets.PROJECT_PATH }}
+            
+            # Descargamos los últimos cambios
+            git pull origin main
+            
+            # 1. Actualización de Laravel
+            cd Laravel
+            composer install --no-interaction --prefer-dist --optimize-autoloader
+            php artisan migrate --force
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+            npm install
+            npm run build
+            cd ..
+            
+            # 2. Actualización de Python (Reinicio de la API)
+            source venv/bin/activate || true
+            pip install -r requirements.txt
+            
+            # Reiniciar el servicio de Python (Ejemplo con systemd, ajustarlo según el servidor final)
+            # sudo systemctl restart facecard-api.service
+            
+            echo "Despliegue completado con éxito."
