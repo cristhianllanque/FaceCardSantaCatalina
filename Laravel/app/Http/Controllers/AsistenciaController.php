@@ -44,6 +44,7 @@ class AsistenciaController extends Controller
     public function enVivo()
     {
         $horario = ConfiguracionHorario::where('nombre', 'mañana')->first() ?? ConfiguracionHorario::activo();
+        $horarioTarde = ConfiguracionHorario::where('nombre', 'tarde')->first();
         $fecha = today()->toDateString();
         $sesionId = 'SES-' . now()->format('YmdHis');
 
@@ -53,7 +54,7 @@ class AsistenciaController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
-        return view('asistencia.envivo', compact('horario', 'fecha', 'sesionId', 'asistenciasHoy'));
+        return view('asistencia.envivo', compact('horario', 'horarioTarde', 'fecha', 'sesionId', 'asistenciasHoy'));
     }
 
     /**

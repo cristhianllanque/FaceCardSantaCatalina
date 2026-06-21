@@ -278,7 +278,7 @@
     </form>
 
     {{-- Pestañas de Grado (Superiores) --}}
-    <div style="display:flex; border-bottom: 2px solid var(--border); overflow-x:auto; margin-bottom:16px;">
+    <div id="estGradoTabs" style="display:flex; border-bottom: 2px solid var(--border); overflow-x:auto; margin-bottom:16px;">
         @for($i=1; $i<=6; $i++)
             <button class="persona-grado-btn {{ $i == 1 ? 'active' : '' }}" data-grado="{{ $i }}" onclick="filterPersonaEst(this, 'grado')">
                 {{ $i }}° Grado
@@ -289,7 +289,7 @@
     {{-- Dashboard Layout --}}
     <div class="persona-dashboard">
         {{-- Secciones (Izquierda) --}}
-        <div class="persona-dashboard-left">
+        <div class="persona-dashboard-left" id="estSeccionTabs">
             @foreach(['A','B','C','D','E'] as $index => $sec)
                 <button class="persona-side-btn {{ $index == 0 ? 'active' : '' }}" data-seccion="{{ $sec }}" onclick="filterPersonaEst(this, 'seccion')">
                     <i class="fas fa-users text-accent"></i> Sección {{ $sec }}
@@ -358,7 +358,7 @@
         </div>
 
         {{-- Turnos (Derecha) --}}
-        <div class="persona-dashboard-right">
+        <div class="persona-dashboard-right" id="estTurnoTabs">
             <button class="persona-side-btn active" data-turno="mañana" onclick="filterPersonaEst(this, 'turno')">
                 <i class="fas fa-sun text-warning"></i> Turno Mañana
             </button>
@@ -489,6 +489,10 @@ let estTurno = 'mañana';
 let docArea = '';
 let docTurno = 'mañana';
 
+// ═══ Detectar si hay búsqueda activa ═══
+const estSearchActive = '{{ request('buscar_est') }}' !== '';
+const docSearchActive = '{{ request('buscar_doc') }}' !== '';
+
 // ═══ Inicialización ═══
 document.addEventListener('DOMContentLoaded', () => {
     // Auto-seleccionar primera área de docentes
@@ -497,10 +501,25 @@ document.addEventListener('DOMContentLoaded', () => {
         docArea = firstAreaBtn.dataset.area;
     }
 
-    updateEstFilter();
-    updateDocFilter();
-    updateSectionCounts();
-    updateAreaCounts();
+    if (estSearchActive) {
+        // Ocultar las pestañas y mostrar todos los resultados
+        document.getElementById('estGradoTabs').style.display = 'none';
+        document.getElementById('estSeccionTabs').style.display = 'none';
+        document.getElementById('estTurnoTabs').style.display = 'none';
+        showAllEstRows();
+    } else {
+        updateEstFilter();
+        updateSectionCounts();
+    }
+
+    if (docSearchActive) {
+        document.querySelectorAll('#persona-tab-doc .persona-dashboard-left').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('#persona-tab-doc .persona-dashboard-right').forEach(el => el.style.display = 'none');
+        showAllDocRows();
+    } else {
+        updateDocFilter();
+        updateAreaCounts();
+    }
 });
 
 // ═══ Cambio de pestaña principal ═══
@@ -529,6 +548,7 @@ function filterPersonaEst(btn, type) {
 }
 
 function updateEstFilter() {
+    if (estSearchActive) return; // No filtrar si hay búsqueda
     let count = 0;
     document.querySelectorAll('.est-row').forEach(row => {
         const match = row.dataset.grado === estGrado &&
@@ -544,6 +564,17 @@ function updateEstFilter() {
     if (emptyRow) {
         emptyRow.style.display = count === 0 ? '' : 'none';
     }
+}
+
+function showAllEstRows() {
+    let count = 0;
+    document.querySelectorAll('.est-row').forEach(row => {
+        row.style.display = '';
+        count++;
+    });
+    document.getElementById('estVisibleCount').textContent = count + ' resultado' + (count !== 1 ? 's' : '') + ' encontrado' + (count !== 1 ? 's' : '');
+    const emptyRow = document.getElementById('estEmptyRow');
+    if (emptyRow) emptyRow.style.display = count === 0 ? '' : 'none';
 }
 
 function updateSectionCounts() {
@@ -574,6 +605,7 @@ function filterPersonaDoc(btn, type) {
 }
 
 function updateDocFilter() {
+    if (docSearchActive) return; // No filtrar si hay búsqueda
     if (!docArea) return;
     let count = 0;
     document.querySelectorAll('.doc-row').forEach(row => {
@@ -583,6 +615,15 @@ function updateDocFilter() {
     });
 
     document.getElementById('docVisibleCount').textContent = count + ' registrado' + (count !== 1 ? 's' : '');
+}
+
+function showAllDocRows() {
+    let count = 0;
+    document.querySelectorAll('.doc-row').forEach(row => {
+        row.style.display = '';
+        count++;
+    });
+    document.getElementById('docVisibleCount').textContent = count + ' resultado' + (count !== 1 ? 's' : '') + ' encontrado' + (count !== 1 ? 's' : '');
 }
 
 function updateAreaCounts() {

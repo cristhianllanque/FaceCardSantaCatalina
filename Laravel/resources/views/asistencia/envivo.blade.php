@@ -50,18 +50,34 @@
                     <i class="fas fa-fingerprint" style="color:var(--accent);"></i>
                     <span>Sesión: <code style="color:var(--warning);font-size:0.75rem;">{{ $sesionId }}</code></span>
                 </div>
+            </div>
+
+            {{-- Horarios de ambos turnos --}}
+            <div style="margin-top:12px; display:flex; gap:12px; flex-wrap:wrap;">
                 @if($horario)
-                <div style="display:flex;align-items:center;gap:6px;font-size:0.82rem;">
-                    <i class="fas fa-clock" style="color:var(--success);"></i>
-                    <span>Puntual: {{ $horario->hora_entrada }}</span>
+                <div style="display:flex; align-items:center; gap:10px; padding:8px 14px; background:var(--bg-input); border-radius:6px; border-left:3px solid var(--warning);">
+                    <i class="fas fa-sun" style="color:var(--warning); font-size:0.9rem;"></i>
+                    <div style="font-size:0.78rem;">
+                        <strong style="color:var(--text-primary);">Mañana</strong>
+                        <div style="color:var(--text-secondary); margin-top:2px;">
+                            <span style="color:var(--success);">● {{ $horario->hora_entrada }}</span> · 
+                            <span style="color:var(--warning);">● {{ $horario->hora_tardanza }}</span> · 
+                            <span style="color:var(--danger);">● {{ $horario->hora_falta }}</span>
+                        </div>
+                    </div>
                 </div>
-                <div style="display:flex;align-items:center;gap:6px;font-size:0.82rem;">
-                    <i class="fas fa-clock" style="color:var(--warning);"></i>
-                    <span>Tardanza: {{ $horario->hora_tardanza }}</span>
-                </div>
-                <div style="display:flex;align-items:center;gap:6px;font-size:0.82rem;">
-                    <i class="fas fa-clock" style="color:var(--danger);"></i>
-                    <span>Falta: {{ $horario->hora_falta }}</span>
+                @endif
+                @if($horarioTarde)
+                <div style="display:flex; align-items:center; gap:10px; padding:8px 14px; background:var(--bg-input); border-radius:6px; border-left:3px solid var(--info);">
+                    <i class="fas fa-moon" style="color:var(--info); font-size:0.9rem;"></i>
+                    <div style="font-size:0.78rem;">
+                        <strong style="color:var(--text-primary);">Tarde</strong>
+                        <div style="color:var(--text-secondary); margin-top:2px;">
+                            <span style="color:var(--success);">● {{ $horarioTarde->hora_entrada }}</span> · 
+                            <span style="color:var(--warning);">● {{ $horarioTarde->hora_tardanza }}</span> · 
+                            <span style="color:var(--danger);">● {{ $horarioTarde->hora_falta }}</span>
+                        </div>
+                    </div>
                 </div>
                 @endif
             </div>

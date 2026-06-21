@@ -284,51 +284,7 @@
             </div>
         </form>
 
-        {{-- Formularios de Filtros para Reportes --}}
-        <h4 style="font-size:0.85rem; color:var(--text-secondary); margin:0 0 8px 0;">2. Filtros para Generar Reportes Específicos</h4>
-        <form method="GET" action="{{ route('asistencia.exportar') }}" style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
-            <input type="hidden" name="fecha" value="{{ $fecha }}">
-            <input type="hidden" name="formato" id="exportFormato" value="pdf">
-            <div class="form-group" style="margin:0; min-width:120px;">
-                <label class="form-label" style="font-size:0.75rem;">Cargo</label>
-                <select name="cargo" class="form-control" style="padding:6px 10px; font-size:0.8rem;">
-                    <option value="">Todos</option>
-                    <option value="estudiante" {{ request('cargo') == 'estudiante' ? 'selected' : '' }}>Estudiante</option>
-                    <option value="docente" {{ request('cargo') == 'docente' ? 'selected' : '' }}>Docente</option>
-                </select>
-            </div>
-            <div class="form-group" style="margin:0; min-width:100px;">
-                <label class="form-label" style="font-size:0.75rem;">Grado</label>
-                <select name="grado" class="form-control" style="padding:6px 10px; font-size:0.8rem;">
-                    <option value="">Todos</option>
-                    @for($i=1; $i<=6; $i++)
-                        <option value="{{ $i }}" {{ request('grado') == $i ? 'selected' : '' }}>{{ $i }}ro</option>
-                    @endfor
-                </select>
-            </div>
-            <div class="form-group" style="margin:0; min-width:100px;">
-                <label class="form-label" style="font-size:0.75rem;">Sección</label>
-                <select name="seccion" class="form-control" style="padding:6px 10px; font-size:0.8rem;">
-                    <option value="">Todas</option>
-                    @foreach(['A','B','C','D','E'] as $s)
-                        <option value="{{ $s }}" {{ request('seccion') == $s ? 'selected' : '' }}>{{ $s }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="form-group" style="margin:0; min-width:120px;">
-                <label class="form-label" style="font-size:0.75rem;">Turno</label>
-                <select name="turno" class="form-control" style="padding:6px 10px; font-size:0.8rem;">
-                    <option value="">Todos</option>
-                    <option value="mañana" {{ request('turno') == 'mañana' ? 'selected' : '' }}>Mañana</option>
-                    <option value="tarde" {{ request('turno') == 'tarde' ? 'selected' : '' }}>Tarde</option>
-                </select>
-            </div>
-            <div style="display:flex; gap:8px;">
-                <button type="button" class="btn btn-danger btn-sm" onclick="document.getElementById('exportFormato').value='pdf'; this.form.submit();"><i class="fas fa-file-pdf"></i> Generar PDF Filtrado</button>
-                <button type="button" class="btn btn-success btn-sm" style="background:#107c41;border-color:#107c41;" onclick="document.getElementById('exportFormato').value='excel'; this.form.submit();"><i class="fas fa-file-excel"></i> Generar Excel Filtrado</button>
-            </div>
-        </form>
-    </div>
+
 </div>
 @endif
 
@@ -427,7 +383,13 @@
                 
                 <!-- Table Area -->
                 <div style="flex:1; background:var(--bg-card); border-radius:8px; border:1px solid var(--border); overflow:hidden;">
-                    <div style="padding:12px 16px; background:var(--bg-input); border-bottom:1px solid var(--border);"><h4 style="margin:0; font-size:0.9rem; color:var(--text-primary);">LISTA DE LOS ALUMNOS QUE ASISTIERON</h4></div>
+                    <div style="padding:12px 16px; background:var(--bg-input); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+                        <h4 style="margin:0; font-size:0.9rem; color:var(--text-primary);">LISTA DE LOS ALUMNOS QUE ASISTIERON</h4>
+                        <div style="display:flex; gap:8px;">
+                            <button onclick="exportCurrentView('estudiante', 'pdf')" class="btn btn-danger btn-sm" style="padding:4px 8px; font-size:0.75rem;"><i class="fas fa-file-pdf"></i> PDF de la lista</button>
+                            <button onclick="exportCurrentView('estudiante', 'excel')" class="btn btn-success btn-sm" style="background:#107c41;border-color:#107c41; padding:4px 8px; font-size:0.75rem;"><i class="fas fa-file-excel"></i> Excel de la lista</button>
+                        </div>
+                    </div>
                     <div class="table-wrapper nested-table">
                         <table id="estudiantesDashboardTable" style="width:100%;">
                             <thead>
@@ -489,7 +451,13 @@
             
             <!-- Table Area -->
             <div style="flex:1; background:var(--bg-card); border-radius:8px; border:1px solid var(--border); overflow:hidden;">
-                <div style="padding:12px 16px; background:var(--bg-input); border-bottom:1px solid var(--border);"><h4 style="margin:0; font-size:0.9rem; color:var(--text-primary);">LISTA DE DOCENTES QUE ASISTIERON</h4></div>
+                <div style="padding:12px 16px; background:var(--bg-input); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+                    <h4 style="margin:0; font-size:0.9rem; color:var(--text-primary);">LISTA DE DOCENTES QUE ASISTIERON</h4>
+                    <div style="display:flex; gap:8px;">
+                        <button onclick="exportCurrentView('docente', 'pdf')" class="btn btn-danger btn-sm" style="padding:4px 8px; font-size:0.75rem;"><i class="fas fa-file-pdf"></i> PDF de la lista</button>
+                        <button onclick="exportCurrentView('docente', 'excel')" class="btn btn-success btn-sm" style="background:#107c41;border-color:#107c41; padding:4px 8px; font-size:0.75rem;"><i class="fas fa-file-excel"></i> Excel de la lista</button>
+                    </div>
+                </div>
                 <div class="table-wrapper nested-table">
                     <table id="docentesDashboardTable" style="width:100%;">
                         <thead>
@@ -643,6 +611,25 @@ function updateDashboardFilter() {
     if (emptyRow) {
         emptyRow.style.display = visibleCount === 0 ? '' : 'none';
     }
+}
+
+function exportCurrentView(cargo, formato) {
+    const params = new URLSearchParams({
+        fecha: document.getElementById('fecha_picker').value,
+        formato: formato,
+        cargo: cargo
+    });
+    
+    if (cargo === 'estudiante') {
+        params.append('grado', currentGrado);
+        params.append('seccion', currentSeccion);
+        params.append('turno', currentTurno);
+    } else {
+        params.append('area', currentDocArea);
+        params.append('turno', currentDocTurno);
+    }
+    
+    window.location.href = '{{ route("asistencia.exportar") }}?' + params.toString();
 }
 
 function filterDocentesDashboard(btn, type) {
