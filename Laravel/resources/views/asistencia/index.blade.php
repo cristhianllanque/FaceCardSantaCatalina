@@ -160,6 +160,44 @@
 }
 
 /* Tablas ultra compactas y no expandidas */
+.dash-grado-btn {
+    padding: 10px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-bottom: none;
+    color: var(--text-secondary);
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 8px 8px 0 0;
+    margin-right: 4px;
+    transition: var(--transition);
+}
+.dash-grado-btn.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+.dash-seccion-btn, .dash-turno-btn, .dash-area-btn, .dash-turno-doc-btn {
+    padding: 10px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 6px;
+    text-align: left;
+    transition: var(--transition);
+}
+.dash-seccion-btn.active, .dash-turno-btn.active, .dash-area-btn.active, .dash-turno-doc-btn.active {
+    background: var(--bg-input);
+    color: var(--accent);
+    border-color: var(--accent);
+    box-shadow: inset 3px 0 0 var(--accent);
+}
+.dashboard-estudiantes-container {
+    animation: fadeIn 0.3s ease;
+}
+
 .nested-table {
     margin: 0;
     border-radius: var(--radius-sm);
@@ -247,9 +285,10 @@
         </form>
 
         {{-- Formularios de Filtros para Reportes --}}
-        <h4 style="font-size:0.85rem; color:var(--text-secondary); margin:0 0 8px 0;">2. Filtros de Búsqueda y Reportes (Aplica a la Exportación)</h4>
-        <form method="GET" style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+        <h4 style="font-size:0.85rem; color:var(--text-secondary); margin:0 0 8px 0;">2. Filtros para Generar Reportes Específicos</h4>
+        <form method="GET" action="{{ route('asistencia.exportar') }}" style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
             <input type="hidden" name="fecha" value="{{ $fecha }}">
+            <input type="hidden" name="formato" id="exportFormato" value="pdf">
             <div class="form-group" style="margin:0; min-width:120px;">
                 <label class="form-label" style="font-size:0.75rem;">Cargo</label>
                 <select name="cargo" class="form-control" style="padding:6px 10px; font-size:0.8rem;">
@@ -285,8 +324,8 @@
                 </select>
             </div>
             <div style="display:flex; gap:8px;">
-                <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter"></i> Aplicar Filtros</button>
-                <a href="{{ route('asistencia.index', ['fecha' => $fecha]) }}" class="btn btn-secondary btn-sm"><i class="fas fa-times"></i> Limpiar</a>
+                <button type="button" class="btn btn-danger btn-sm" onclick="document.getElementById('exportFormato').value='pdf'; this.form.submit();"><i class="fas fa-file-pdf"></i> Generar PDF Filtrado</button>
+                <button type="button" class="btn btn-success btn-sm" style="background:#107c41;border-color:#107c41;" onclick="document.getElementById('exportFormato').value='excel'; this.form.submit();"><i class="fas fa-file-excel"></i> Generar Excel Filtrado</button>
             </div>
         </form>
     </div>
@@ -299,8 +338,8 @@
     </div>
     <div style="display:flex;gap:8px;">
         <a href="{{ route('asistencia.envivo') }}" class="btn btn-success btn-sm"><i class="fas fa-video"></i> Modo En Vivo</a>
-        <a href="{{ route('asistencia.exportar', ['formato' => 'pdf', 'fecha' => $fecha] + request()->all()) }}" class="btn btn-danger btn-sm"><i class="fas fa-file-pdf"></i> Exportar PDF</a>
-        <a href="{{ route('asistencia.exportar', ['formato' => 'excel', 'fecha' => $fecha] + request()->all()) }}" class="btn btn-success btn-sm" style="background:#107c41;border-color:#107c41;"><i class="fas fa-file-excel"></i> Exportar Excel</a>
+        <a href="{{ route('asistencia.exportar', ['formato' => 'pdf', 'fecha' => $fecha]) }}" class="btn btn-danger btn-sm"><i class="fas fa-file-pdf"></i> Exportar Todo PDF</a>
+        <a href="{{ route('asistencia.exportar', ['formato' => 'excel', 'fecha' => $fecha]) }}" class="btn btn-success btn-sm" style="background:#107c41;border-color:#107c41;"><i class="fas fa-file-excel"></i> Exportar Todo Excel</a>
     </div>
 </div>
 
@@ -347,11 +386,7 @@
         return $a->persona->area ?: 'Sin Área';
     })->sortKeys();
 
-    $estudiantesAgrupados = $asistenciasEstudiantes->groupBy([
-        fn($a) => $a->turno ? 'Turno ' . ucfirst($a->turno) : 'Sin Turno',
-        fn($a) => $a->persona->grado ? $a->persona->grado . '° Grado' : 'Sin Grado',
-        fn($a) => $a->persona->seccion ? 'Sección ' . $a->persona->seccion : 'Sin Sección'
-    ]);
+    $estudiantesAgrupados = []; // Ya no se usa para la vista nueva, pero lo dejamos vacío por si acaso
 @endphp
 
 {{-- Pestañas Compactas --}}
@@ -372,63 +407,64 @@
             <h3 style="font-size:1rem;">No hay estudiantes</h3>
         </div>
     @else
-        <div class="accordion-group">
-            @foreach($estudiantesAgrupados as $turnoNombre => $grados)
-                <div class="accordion-item active">
-                    <button class="accordion-header" onclick="toggleAccordion(this)">
-                        <span style="display:flex; align-items:center; gap:8px;">
-                            <i class="fas fa-sun text-warning"></i> {{ $turnoNombre }} 
-                            <span class="badge badge-secondary" style="font-size:0.7rem;">{{ $grados->flatten()->count() }} alumnos</span>
-                        </span>
-                        <i class="fas fa-chevron-down"></i>
-                    </button>
-                    <div class="accordion-body">
-                        <div class="accordion-content-inner" style="padding-top:0;">
-                            @foreach($grados->sortKeys() as $gradoNombre => $secciones)
-                                <div class="accordion-item" style="margin-top:8px; border-color:var(--border-light);">
-                                    <button class="accordion-header" style="background:var(--bg-input); padding:8px 12px;" onclick="toggleAccordion(this)">
-                                        <span style="display:flex; align-items:center; gap:8px; font-size:0.85rem;">
-                                            <i class="fas fa-layer-group text-primary"></i> {{ $gradoNombre }}
-                                            <span class="badge badge-secondary" style="font-size:0.65rem; background:var(--bg-card);">{{ $secciones->flatten()->count() }} alumnos</span>
-                                        </span>
-                                        <i class="fas fa-chevron-down"></i>
-                                    </button>
-                                    <div class="accordion-body">
-                                        <div class="accordion-content-inner" style="padding:10px;">
-                                            @foreach($secciones->sortKeys() as $seccionNombre => $alumnos)
-                                                <div style="margin-bottom:12px;">
-                                                    <h4 style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-                                                        <i class="fas fa-users text-accent"></i> {{ $seccionNombre }}
-                                                    </h4>
-                                                    <div class="table-wrapper nested-table">
-                                                        <table>
-                                                            <thead>
-                                                                <tr>
-                                                                    <th style="width:40px;">Foto</th>
-                                                                    <th>Código / Nombre</th>
-                                                                    <th>Hora</th>
-                                                                    <th>Estado</th>
-                                                                    <th>Confianza</th>
-                                                                    @if(auth()->user()->isAdmin())<th style="width:100px;">Acción</th>@endif
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                @foreach($alumnos as $a)
-                                                                    @include('asistencia.partials.row', ['a' => $a])
-                                                                @endforeach
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
+        <div class="dashboard-estudiantes-container" style="display:flex; flex-direction:column; gap:16px;">
+            <!-- Grados Top Tabs -->
+            <div class="dashboard-grados-tabs" style="display:flex; border-bottom: 2px solid var(--border); overflow-x:auto;">
+                @for($i=1; $i<=6; $i++)
+                    <button class="dash-grado-btn {{ $i == 1 ? 'active' : '' }}" data-grado="{{ $i }}" onclick="filterDashboard(this, 'grado')">{{ $i }}° Grado</button>
+                @endfor
+            </div>
+            
+            <div style="display:flex; gap:16px; flex-wrap:wrap;">
+                <!-- Secciones Left Tabs -->
+                <div class="dashboard-secciones-tabs" style="display:flex; flex-direction:column; gap:4px; min-width:120px;">
+                    @foreach(['A','B','C','D','E'] as $index => $sec)
+                        <button class="dash-seccion-btn {{ $index == 0 ? 'active' : '' }}" data-seccion="{{ $sec }}" onclick="filterDashboard(this, 'seccion')">
+                            <i class="fas fa-users text-accent" style="margin-right:8px;"></i> Sección {{ $sec }}
+                        </button>
+                    @endforeach
+                </div>
+                
+                <!-- Table Area -->
+                <div style="flex:1; background:var(--bg-card); border-radius:8px; border:1px solid var(--border); overflow:hidden;">
+                    <div style="padding:12px 16px; background:var(--bg-input); border-bottom:1px solid var(--border);"><h4 style="margin:0; font-size:0.9rem; color:var(--text-primary);">LISTA DE LOS ALUMNOS QUE ASISTIERON</h4></div>
+                    <div class="table-wrapper nested-table">
+                        <table id="estudiantesDashboardTable" style="width:100%;">
+                            <thead>
+                                <tr>
+                                    <th style="width:40px;">Foto</th>
+                                    <th>Código / Nombre</th>
+                                    <th>Hora</th>
+                                    <th>Estado</th>
+                                    <th>Confianza</th>
+                                    @if(auth()->user()->isAdmin())<th style="width:100px;">Acción</th>@endif
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($asistenciasEstudiantes as $a)
+                                    @include('asistencia.partials.row', ['a' => $a])
+                                @endforeach
+                                <tr id="emptyDashboardRow" style="display:none;">
+                                    <td colspan="{{ auth()->user()->isAdmin() ? 6 : 5 }}" style="text-align:center; padding:30px; color:var(--text-muted);">
+                                        <i class="fas fa-folder-open" style="font-size:2rem; margin-bottom:12px; opacity:0.5; display:block;"></i>
+                                        No hay alumnos para los filtros seleccionados.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-            @endforeach
+                
+                <!-- Turnos Right Tabs -->
+                <div class="dashboard-turnos-tabs" style="display:flex; flex-direction:column; gap:8px; min-width:140px;">
+                    <button class="dash-turno-btn active" data-turno="mañana" onclick="filterDashboard(this, 'turno')">
+                        <i class="fas fa-sun text-warning" style="margin-right:8px;"></i> Turno Mañana
+                    </button>
+                    <button class="dash-turno-btn" data-turno="tarde" onclick="filterDashboard(this, 'turno')">
+                        <i class="fas fa-moon text-info" style="margin-right:8px;"></i> Turno Tarde
+                    </button>
+                </div>
+            </div>
         </div>
     @endif
 </div>
@@ -441,42 +477,56 @@
             <h3 style="font-size:1rem;">No hay docentes</h3>
         </div>
     @else
-        <div class="accordion-group">
-            @foreach($docentesAgrupados as $areaNombre => $docentesArea)
-                <div class="accordion-item active">
-                    <button class="accordion-header" onclick="toggleAccordion(this)">
-                        <span style="display:flex; align-items:center; gap:8px;">
-                            <i class="fas fa-briefcase text-info"></i> {{ $areaNombre }}
-                            <span class="badge badge-secondary" style="font-size:0.7rem;">{{ $docentesArea->count() }} docentes</span>
-                        </span>
-                        <i class="fas fa-chevron-down"></i>
+        <div class="dashboard-docentes-container" style="display:flex; gap:16px; flex-wrap:wrap;">
+            <!-- Areas Left Tabs -->
+            <div class="dashboard-areas-tabs" style="display:flex; flex-direction:column; gap:4px; min-width:160px;">
+                @foreach($docentesAgrupados->keys() as $index => $areaNombre)
+                    <button class="dash-area-btn {{ $index == 0 ? 'active' : '' }}" data-area="{{ $areaNombre }}" onclick="filterDocentesDashboard(this, 'area')">
+                        <i class="fas fa-briefcase text-info" style="margin-right:8px;"></i> {{ $areaNombre }}
                     </button>
-                    <div class="accordion-body">
-                        <div class="accordion-content-inner" style="padding:10px;">
-                            <div class="table-wrapper nested-table">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th style="width:40px;">Foto</th>
-                                            <th>Código / Nombre</th>
-                                            <th>Turno</th>
-                                            <th>Hora</th>
-                                            <th>Estado</th>
-                                            <th>Confianza</th>
-                                            @if(auth()->user()->isAdmin())<th style="width:100px;">Acción</th>@endif
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($docentesArea as $a)
-                                            @include('asistencia.partials.row_docente', ['a' => $a])
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
+                @endforeach
+            </div>
+            
+            <!-- Table Area -->
+            <div style="flex:1; background:var(--bg-card); border-radius:8px; border:1px solid var(--border); overflow:hidden;">
+                <div style="padding:12px 16px; background:var(--bg-input); border-bottom:1px solid var(--border);"><h4 style="margin:0; font-size:0.9rem; color:var(--text-primary);">LISTA DE DOCENTES QUE ASISTIERON</h4></div>
+                <div class="table-wrapper nested-table">
+                    <table id="docentesDashboardTable" style="width:100%;">
+                        <thead>
+                            <tr>
+                                <th style="width:40px;">Foto</th>
+                                <th>Código / Nombre</th>
+                                <th>Turno</th>
+                                <th>Hora</th>
+                                <th>Estado</th>
+                                <th>Confianza</th>
+                                @if(auth()->user()->isAdmin())<th style="width:100px;">Acción</th>@endif
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($asistenciasDocentes as $a)
+                                @include('asistencia.partials.row_docente', ['a' => $a])
+                            @endforeach
+                            <tr id="emptyDocentesDashboardRow" style="display:none;">
+                                <td colspan="{{ auth()->user()->isAdmin() ? 7 : 6 }}" style="text-align:center; padding:30px; color:var(--text-muted);">
+                                    <i class="fas fa-folder-open" style="font-size:2rem; margin-bottom:12px; opacity:0.5; display:block;"></i>
+                                    No hay docentes para los filtros seleccionados.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
-            @endforeach
+            </div>
+            
+            <!-- Turnos Right Tabs -->
+            <div class="dashboard-docentes-turnos-tabs" style="display:flex; flex-direction:column; gap:8px; min-width:140px;">
+                <button class="dash-turno-doc-btn active" data-turno="mañana" onclick="filterDocentesDashboard(this, 'turno')">
+                    <i class="fas fa-sun text-warning" style="margin-right:8px;"></i> Turno Mañana
+                </button>
+                <button class="dash-turno-doc-btn" data-turno="tarde" onclick="filterDocentesDashboard(this, 'turno')">
+                    <i class="fas fa-moon text-info" style="margin-right:8px;"></i> Turno Tarde
+                </button>
+            </div>
         </div>
     @endif
 </div>
@@ -544,6 +594,88 @@
 
 @push('scripts')
 <script>
+let currentGrado = '1';
+let currentSeccion = 'A';
+let currentTurno = 'mañana';
+
+let currentDocArea = '';
+let currentDocTurno = 'mañana';
+
+document.addEventListener('DOMContentLoaded', () => {
+    updateDashboardFilter();
+    
+    const firstAreaBtn = document.querySelector('.dash-area-btn');
+    if (firstAreaBtn) {
+        currentDocArea = firstAreaBtn.dataset.area;
+    }
+    updateDocentesDashboardFilter();
+});
+
+function filterDashboard(btn, type) {
+    if (type === 'grado') {
+        document.querySelectorAll('.dash-grado-btn').forEach(b => b.classList.remove('active'));
+        currentGrado = btn.dataset.grado;
+    } else if (type === 'seccion') {
+        document.querySelectorAll('.dash-seccion-btn').forEach(b => b.classList.remove('active'));
+        currentSeccion = btn.dataset.seccion;
+    } else if (type === 'turno') {
+        document.querySelectorAll('.dash-turno-btn').forEach(b => b.classList.remove('active'));
+        currentTurno = btn.dataset.turno;
+    }
+    btn.classList.add('active');
+    updateDashboardFilter();
+}
+
+function updateDashboardFilter() {
+    let visibleCount = 0;
+    document.querySelectorAll('.estudiante-row').forEach(row => {
+        if (row.dataset.grado === currentGrado && 
+            row.dataset.seccion === currentSeccion && 
+            row.dataset.turno === currentTurno) {
+            row.style.display = '';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    const emptyRow = document.getElementById('emptyDashboardRow');
+    if (emptyRow) {
+        emptyRow.style.display = visibleCount === 0 ? '' : 'none';
+    }
+}
+
+function filterDocentesDashboard(btn, type) {
+    if (type === 'area') {
+        document.querySelectorAll('.dash-area-btn').forEach(b => b.classList.remove('active'));
+        currentDocArea = btn.dataset.area;
+    } else if (type === 'turno') {
+        document.querySelectorAll('.dash-turno-doc-btn').forEach(b => b.classList.remove('active'));
+        currentDocTurno = btn.dataset.turno;
+    }
+    btn.classList.add('active');
+    updateDocentesDashboardFilter();
+}
+
+function updateDocentesDashboardFilter() {
+    if (!currentDocArea) return;
+    let visibleCount = 0;
+    document.querySelectorAll('.docente-row').forEach(row => {
+        if (row.dataset.area === currentDocArea && 
+            row.dataset.turno === currentDocTurno) {
+            row.style.display = '';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    const emptyRow = document.getElementById('emptyDocentesDashboardRow');
+    if (emptyRow) {
+        emptyRow.style.display = visibleCount === 0 ? '' : 'none';
+    }
+}
+
 function changeDate(offset) {
     const picker = document.getElementById('fecha_picker');
     const currentDate = new Date(picker.value);

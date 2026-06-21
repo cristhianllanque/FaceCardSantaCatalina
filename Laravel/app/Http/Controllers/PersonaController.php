@@ -19,11 +19,8 @@ class PersonaController extends Controller
                   ->orWhere('codigo', 'like', "%{$search}%");
             });
         }
-        if ($request->filled('grado')) { $queryEst->where('grado', $request->grado); }
-        if ($request->filled('seccion')) { $queryEst->where('seccion', $request->seccion); }
-        if ($request->filled('turno_est')) { $queryEst->where('turno', $request->turno_est); }
 
-        $estudiantes = $queryEst->latest()->paginate(10, ['*'], 'page_est');
+        $estudiantes = $queryEst->orderBy('grado')->orderBy('seccion')->orderBy('nombre')->get();
 
         // Query base para Docentes
         $queryDoc = Persona::where('cargo', 'docente');
@@ -34,10 +31,8 @@ class PersonaController extends Controller
                   ->orWhere('codigo', 'like', "%{$search}%");
             });
         }
-        if ($request->filled('area')) { $queryDoc->where('area', $request->area); }
-        if ($request->filled('turno_doc')) { $queryDoc->where('turno', $request->turno_doc); }
 
-        $docentes = $queryDoc->latest()->paginate(10, ['*'], 'page_doc');
+        $docentes = $queryDoc->orderBy('area')->orderBy('nombre')->get();
 
         $areas = Persona::where('cargo', 'docente')->whereNotNull('area')->distinct()->pluck('area');
 

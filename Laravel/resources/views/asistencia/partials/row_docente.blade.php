@@ -1,4 +1,4 @@
-<tr>
+<tr class="docente-row" data-area="{{ $a->persona->area ?? 'Sin Área' }}" data-turno="{{ strtolower($a->turno ?? 'mañana') }}">
     <td>
         @if($a->foto_captura)
             @php

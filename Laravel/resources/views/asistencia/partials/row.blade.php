@@ -1,4 +1,4 @@
-<tr>
+<tr class="estudiante-row" data-grado="{{ $a->persona->grado ?? '1' }}" data-seccion="{{ $a->persona->seccion ?? 'A' }}" data-turno="{{ strtolower($a->turno ?? 'mañana') }}">
     <td>
         @if($a->foto_captura)
             @php
